@@ -1,60 +1,103 @@
-import React from "react";
-import { Outlet, Link,useNavigate } from "react-router-dom";
+import { useState } from "react";
+import NoteContext from "./NoteContext";
 
-const Navbar = () => {
-  const navigate=useNavigate();
-  const handleLogout=()=>{
-    localStorage.removeItem('token');
-    navigate('/login');
-  }
+const NoteState = (props) => {
+  const host = "http://localhost:5000";
+  const notesInitial = [];
+  
+  const [notes, setNotes] = useState(notesInitial);
+
+  const getNotes = async () => {
+    const response = await fetch(`${host}/api/notes/getnotes`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "auth-token":
+          localStorage.getItem('token'),
+      },
+    });
+    const json = await response.json();
+    console.log(json);
+    setNotes(json);
+  };
+
+  const addNote = async (title, description, tag) => {
+    const response = await fetch(`${host}/api/notes/addnotes`, {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+        "auth-token":
+        localStorage.getItem('token'),
+      },
+
+      body: JSON.stringify({ title, description, tag }),
+    });
+    const json=await response.json();
+    // const note = {
+    //   _id: "6495f090519dc125ea3c7c3336c",
+    //   user: "6495b773ad407e0d7e73fdd2",
+    //   title: title,
+    //   description: description,
+    //   tag: tag,
+    //   date: "2023-06-23T19:40:09.156Z",
+    //   __v: 0,
+    // };
+    setNotes(notes.concat({"title":json.title,"description":json.description}));
+  };
+
+  const deleteNote = async(id) => {
+    const newNotes = notes.filter((note) => {
+      return note._id !== id;
+    });
+    setNotes(newNotes);
+    const response = await fetch(`${host}/api/notes/deletenote/${id}`, {
+      method: "DELETE",
+
+      headers: {
+        "Content-Type": "application/json",
+        "auth-token":
+        localStorage.getItem('token'),
+      }
+
+      
+    });
+    const json = await response.json();
+  };
+  const editNote = async (id, title, description, tag) => {
+    const response = await fetch(`${host}/api/notes/updatenote/${id}`, {
+      method: "PUT",
+
+      headers: {
+        "Content-Type": "application/json",
+        "auth-token":
+        localStorage.getItem('token'),
+      },
+
+      body: JSON.stringify({ title, description, tag }),
+    });
+    const json = await response.json();
+    const nnotes=JSON.parse(JSON.stringify(notes));
+    for (let i = 0; i < nnotes.length; i++) {
+      const x = nnotes[i];
+      if (x._id === id) {
+        nnotes[i].title = title;
+        nnotes[i].description = description;
+        nnotes[i].tag = tag;
+        break;
+      }
+    }
+    setNotes(nnotes);
+  };
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg bg-body-tertiary">
-        <div className="container-fluid">
-          <Link className="navbar-brand" to="/">
-            Navbar
-          </Link>
-          <button
-            className="navbar-toggler"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#navbarSupportedContent"
-            aria-controls="navbarSupportedContent"
-            aria-expanded="false"
-            aria-label="Toggle navigation"
-          >
-            <span className="navbar-toggler-icon"></span>
-          </button>
-          <div className="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-              <li className="nav-item">
-                <Link className="nav-link active" aria-current="page" to="/">
-                  Home
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link className="nav-link" to="/about">
-                  About
-                </Link>
-              </li>
-            </ul>
-            {!localStorage.getItem('token')?<form className="d-flex" role="search">
-              <Link button type="button" class="btn btn-primary mx-1" to="/login">
-                Login
-              </Link>
-              <Link button type="button" class="btn btn-primary" to="/signup">
-                Sign Up
-              </Link>
-            </form>:<button onClick={handleLogout}  type="button" class="btn btn-primary">
-            Logout
-          </button>}
-          </div>
-        </div>
-        <Outlet />
-      </nav>
-    </div>
+    <NoteContext.Provider
+      value={{ notes, addNote, deleteNote, editNote, getNotes}}
+    >
+      {props.children}
+    </NoteContext.Provider>
   );
 };
 
-export default Navbar;
+export default NoteState;
+
